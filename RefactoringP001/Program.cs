@@ -16,7 +16,13 @@ namespace RefactoringP001
                 EmployeeType = EmployeeType.FULL_TIME 
             };
 
-            SalaryCalculator calc = new SalaryCalculator();
+            // ITaxCalculator can be replace with different implementations based on employee.EmployeeType
+            //   which follows open close principle - open to extension, close to modification
+            ITaxCalculator taxCalculator = employee.EmployeeType == EmployeeType.FREELANCE ? 
+                                                    new FreelanceTaxCalculator() : 
+                                                    new FullTimeTaxCalculator(); 
+
+            SalaryCalculator calc = new SalaryCalculator(taxCalculator);
             var salary = calc.calculateSalary(employee);
 
             Console.WriteLine(salary.Value);
@@ -24,31 +30,42 @@ namespace RefactoringP001
         }
     }
 
+    // Only responsible for calculate salary
     public class SalaryCalculator
     {
+        private ITaxCalculator taxCalculator;
+        public SalaryCalculator(ITaxCalculator taxCalculator)
+        {
+            this.taxCalculator = taxCalculator;
+        }
+
         public Salary calculateSalary(Employee employee)
         {
-            decimal taxDecution = calculateTax(employee);
+            decimal taxDecution = taxCalculator.calculateTax(employee);
             employee.Salary.Value -= taxDecution;
             return employee.Salary;
         }
+    }
 
-        private decimal calculateTax(Employee employee)
+    // Responsible for calculate tax deduction
+    public interface ITaxCalculator
+    {
+        decimal calculateTax(Employee employee);
+    }
+
+    public class FullTimeTaxCalculator : ITaxCalculator
+    {
+        public decimal calculateTax(Employee employee)
         {
-            decimal result = 0;
-            switch (employee.EmployeeType)
-            {
-                case EmployeeType.FULL_TIME:
-                    result = employee.Salary.Value * 0.1m;
-                    break;
-                case EmployeeType.FREELANCE:
-                    result = employee.Salary.Value * 0.05m;
-                    break;
-                default:
-                    result = employee.Salary.Value * 0.1m;
-                    break;
-            }
-            return result;
+            return employee.Salary.Value * 0.1m;
+        }
+    }
+
+    public class FreelanceTaxCalculator : ITaxCalculator
+    {
+        public decimal calculateTax(Employee employee)
+        {
+            return employee.Salary.Value * 0.05m;
         }
     }
 
