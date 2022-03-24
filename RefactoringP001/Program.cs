@@ -6,26 +6,29 @@ namespace RefactoringP001
     {
         static void Main(string[] args)
         {
-            Employee employee = new Employee() 
-            { 
-                Id = 1, 
-                Salary = new Salary() 
-                { 
-                    Value = 10000m 
-                }, 
-                EmployeeType = EmployeeType.FULL_TIME 
+            Employee[] employees = new Employee[]
+            {
+                new Employee()
+                {
+                    Id = 1,
+                    Salary = new Salary() { Value = 10000m },
+                    EmployeeType = EmployeeType.FULL_TIME
+                },
+                new Employee()
+                {
+                    Id = 2,
+                    Salary = new Salary() { Value = 11000m },
+                    EmployeeType = EmployeeType.FREELANCE
+                },
             };
 
-            // ITaxCalculator can be replace with different implementations based on employee.EmployeeType
-            //   which follows open close principle - open to extension, close to modification
-            ITaxCalculator taxCalculator = employee.EmployeeType == EmployeeType.FREELANCE ? 
-                                                    new FreelanceTaxCalculator() : 
-                                                    new FullTimeTaxCalculator(); 
-
-            SalaryCalculator calc = new SalaryCalculator(taxCalculator);
-            var salary = calc.calculateSalary(employee);
-
-            Console.WriteLine(salary.Value);
+            SalaryCalculator calc = new SalaryCalculator(new TaxCalculatorFactory());
+            foreach (var employee in employees)
+            {
+                var salary = calc.calculateSalary(employee);
+                Console.WriteLine(salary.Value);
+            }
+            
             Console.ReadLine();
         }
     }
@@ -33,17 +36,45 @@ namespace RefactoringP001
     // Only responsible for calculate salary
     public class SalaryCalculator
     {
+        private readonly TaxCalculatorFactory taxCalculatorFactory;
         private ITaxCalculator taxCalculator;
-        public SalaryCalculator(ITaxCalculator taxCalculator)
+        public SalaryCalculator(TaxCalculatorFactory taxCalculatorFactory)
         {
-            this.taxCalculator = taxCalculator;
+            this.taxCalculatorFactory = taxCalculatorFactory;
         }
 
         public Salary calculateSalary(Employee employee)
         {
+            if (taxCalculator == null)
+                taxCalculator = taxCalculatorFactory.newTaxCalculator(employee);
+
             decimal taxDecution = taxCalculator.calculateTax(employee);
             employee.Salary.Value -= taxDecution;
             return employee.Salary;
+        }
+    }
+
+    // Only the factory will be changed when new EmployeeType introduced which minimize the code change
+    public class TaxCalculatorFactory
+    {
+        // ITaxCalculator can be replace with different implementations based on employee.EmployeeType
+        //   which follows open close principle - open to extension, close to modification
+        public ITaxCalculator newTaxCalculator(Employee employee)
+        {
+            ITaxCalculator taxCalculator;
+            switch (employee.EmployeeType)
+            {
+                case EmployeeType.FREELANCE:
+                    taxCalculator = new FreelanceTaxCalculator();
+                    break;
+                case EmployeeType.FULL_TIME:
+                    taxCalculator = new FullTimeTaxCalculator();
+                    break;
+                default:
+                    taxCalculator = new FullTimeTaxCalculator();
+                    break;
+            }
+            return taxCalculator;
         }
     }
 
